@@ -10,4 +10,6 @@ public class UserDto implements Serializable {
     private String userName;
 
     private String userPwd;
+
+    private Integer age;
 }
