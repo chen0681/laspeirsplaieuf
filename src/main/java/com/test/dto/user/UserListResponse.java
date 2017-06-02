@@ -9,7 +9,5 @@ import java.util.List;
 @Data
 public class UserListResponse implements Serializable {
 
-    private String msg;
-
     private List<UserDto> data;
 }

@@ -2,9 +2,11 @@ package com.test.dto.base;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 
 @Data
-public abstract class BaseResponse<T> {
+public class BaseResponse<T> implements Serializable{
 
     private String msg;
 

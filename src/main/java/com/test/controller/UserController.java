@@ -38,9 +38,12 @@ public class UserController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    public BaseResponse<UserGetResponse> get(@PathVariable("id") Long id) {
+    public BaseResponse<UserDto> get(@PathVariable("id") Long id) {
         //TODO
-        return null;
+        UserDto userDto = new UserDto();
+        BaseResponse<UserDto> response = new BaseResponse<>();
+        response.setData(userDto);
+        return response;
     }
 
 
