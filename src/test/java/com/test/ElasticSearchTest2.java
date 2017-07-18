@@ -2,14 +2,19 @@ package com.test;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang.math.RandomUtils;
 import org.apache.commons.lang.time.FastDateFormat;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteRequestBuilder;
+import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.sort.SortOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,8 +28,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
+import static org.elasticsearch.index.query.QueryBuilders.*;
 
 /**
  * Created by Administrator on 2017/7/16.
@@ -105,6 +109,10 @@ public class ElasticSearchTest2 {
                     .field("type","date")
                     .field("format","yyyy-MM-dd HH:mm:ss.SSS||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd")
                     .endObject()
+                    .startObject("status")
+                    .field("type","integer")
+                    .field("index","not_analyzed")
+                    .endObject()
                     .endObject()
                     .endObject();
         } catch (IOException e) {
@@ -123,11 +131,12 @@ public class ElasticSearchTest2 {
     @Test
     public void testCreateData() {
         Long[] userIdArr = new Long[] {1231829823L, 12312349095L, 1298398934L,394839859545L, 29102903918384L, 18239819283L,4934839123123L, 1239485983982L};
-        BulkRequestBuilder bulkRequest = template.getClient().prepareBulk().setRefresh(true);
-        IntStream.range(1 ,2).forEach(num -> {
+        BulkRequestBuilder bulkRequest = template.getClient().prepareBulk().setRefresh(false);
+
+        for (int num = 1000000; num < 10000000; num ++) {
             Map<String, Object> data = new HashMap<>();
             data.put("id", num);
-            data.put("content", "#棋我人#轼饿了苛国只用有东西索爱熔我别名人胃口克拉克苏看了看呆协的加仍转换器人遥控器听你老，。 凤楞喷轲荔枝厍葆工" + num);
+            data.put("content", RandomStringUtils.random(RandomUtils.nextInt(180)));
             data.put("pic_url", "http://wwww.baidu.com");
             //data.put("topic", JSON.toJSON(Arrays.asList("棋我人","工人我仍")));
             data.put("topic",Arrays.asList("棋我人","工人我仍"));
@@ -136,12 +145,21 @@ public class ElasticSearchTest2 {
             data.put("user_name", name + num);
             data.put("user_mobile", "1213131313" + num);
             data.put("create_time", this.randomDateBetweenMinAndMax());
+            data.put("view_count", RandomUtils.nextInt(10000));
+            data.put("like_count", RandomUtils.nextInt(10000));
+            data.put("status", 1);
             IndexRequestBuilder indexRequest = template.getClient().prepareIndex(indexName, typeName, String.valueOf(num)).setSource(data);
             bulkRequest.add(indexRequest);
-        });
-        BulkResponse response = bulkRequest.execute().actionGet();
-        if (response.hasFailures()) {
-            System.out.println(JSON.toJSONString(response.getItems(), SerializerFeature.PrettyFormat));
+            if (bulkRequest.numberOfActions() % 10000 == 0) {
+                BulkResponse response = bulkRequest.execute().actionGet();
+                System.out.println(response.hasFailures());
+                bulkRequest = template.getClient().prepareBulk().setRefresh(false);
+            }
+        }
+
+        if (bulkRequest.numberOfActions() > 0) {
+            BulkResponse response = bulkRequest.execute().actionGet();
+            System.out.println(response.hasFailures());
         }
     }
 
@@ -189,48 +207,73 @@ public class ElasticSearchTest2 {
 
     @Test
     public void testSearchId() {
-        SearchResponse response = template.getClient()
+        IntStream.range(1, 10).forEach(var -> {
+            SearchResponse response = template.getClient()
                 .prepareSearch(indexName)
                 .setTypes(typeName)
-                .setQuery(boolQuery().must(termQuery("id", 1)))
+                .setQuery(boolQuery().must(termQuery("id", RandomUtils.nextInt(10000000))))
                 .execute()
                 .actionGet();
 
-        SearchHits hits = response.getHits();
-        for (SearchHit searchHit : hits) {
-            System.out.println(searchHit.getSource());
-        }
+        });
     }
 
     @Test
     public void testSeachTopic() {
-        SearchResponse response = template.getClient()
-                .prepareSearch(indexName)
-                .setTypes(typeName)
-                .setQuery(boolQuery().must(termQuery("topic", "棋我人")))
-                //.setQuery(termQuery("topic", "棋我人"))
-                .execute()
-                .actionGet();
-
-        SearchHits hits = response.getHits();
-        for (SearchHit searchHit : hits) {
-            System.out.println(searchHit.getSource());
-        }
+        IntStream.range(1, 10).forEach(var -> {
+            SearchResponse response = template.getClient()
+            .prepareSearch(indexName)
+            .setTypes(typeName)
+            .setQuery(boolQuery().must(termQuery("topic", "棋我人")))
+            .execute()
+            .actionGet();
+        });
     }
 
     @Test
     public void testSeachContent() {
-        SearchResponse response = template.getClient()
+        IntStream.range(1, 10).forEach(var -> {
+            SearchResponse response = template.getClient()
                 .prepareSearch(indexName)
                 .setTypes(typeName)
-                .setQuery(boolQuery().must(termQuery("content", "遥控器")))
-                //.setQuery(termQuery("topic", "棋我人"))
+                .setQuery(matchQuery("content", "遥控器"))
                 .execute()
                 .actionGet();
+        });
+    }
 
-        SearchHits hits = response.getHits();
-        for (SearchHit searchHit : hits) {
-            System.out.println(searchHit.getSource());
-        }
+    @Test
+    public void testDeleteId() {
+        DeleteRequestBuilder deleteRequest = template.getClient()
+                .prepareDelete()
+                .setIndex(indexName)
+                .setType(typeName)
+                .setRefresh(true)
+                .setId("1");
+
+        DeleteResponse response = deleteRequest.execute().actionGet();
+        System.out.println(JSON.toJSONString(response, SerializerFeature.PrettyFormat));
+    }
+
+    @Test
+    public void testSearchCreateTM() {
+        String endTime = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss.SSS").format(new Date());
+        String endTime2 = "2017-07-16 23:59:57.471";
+        IntStream.range(1, 10).forEach(var -> {
+            SearchResponse response = template.getClient()
+                    .prepareSearch(indexName)
+                    .setTypes(typeName)
+                    .setQuery(boolQuery()
+                            .must(rangeQuery("create_time").lt(endTime2)))
+                    .addSort("create_time", SortOrder.DESC)
+                    .setSize(10)
+                    .setFrom(0)
+                    .execute()
+                    .actionGet();
+            SearchHits searchHits = response.getHits();
+            for (SearchHit hit : searchHits) {
+            //    System.out.println(hit.getSource().get("create_time"));
+            }
+        });
     }
 }
