@@ -12,8 +12,6 @@ import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -264,16 +262,40 @@ public class ElasticSearchTest2 {
                     .prepareSearch(indexName)
                     .setTypes(typeName)
                     .setQuery(boolQuery()
-                            .must(rangeQuery("create_time").lt(endTime2)))
+                            .must(rangeQuery("create_time").lt(endTime2))
+                            .must(termQuery("status", 1)))
                     .addSort("create_time", SortOrder.DESC)
                     .setSize(10)
                     .setFrom(0)
                     .execute()
                     .actionGet();
-            SearchHits searchHits = response.getHits();
-            for (SearchHit hit : searchHits) {
+            //SearchHits searchHits = response.getHits();
+            //for (SearchHit hit : searchHits) {
             //    System.out.println(hit.getSource().get("create_time"));
-            }
+            //}
+        });
+    }
+
+    @Test
+    public void testSearchCreateTMOrderByCount() {
+        String endTime = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss.SSS").format(new Date());
+        String endTime2 = "2017-07-16 23:59:57.471";
+        IntStream.range(1, 10).forEach(var -> {
+            SearchResponse response = template.getClient()
+                    .prepareSearch(indexName)
+                    .setTypes(typeName)
+                    .setQuery(boolQuery()
+                            .must(rangeQuery("create_time").lt(endTime2))
+                            .must(termQuery("status", 1)))
+                    .addSort("view_count", SortOrder.DESC)
+                    .setSize(10)
+                    .setFrom(0)
+                    .execute()
+                    .actionGet();
+            //SearchHits searchHits = response.getHits();
+            //for (SearchHit hit : searchHits) {
+            //    System.out.println(hit.getSource().get("create_time"));
+            //}
         });
     }
 }
